@@ -333,9 +333,37 @@
     main{padding-bottom:84px}
     .fab{right:14px;bottom:14px;padding:11px 16px;font-size:13px}
   }
+  body.auth-locked{overflow:hidden}
+  .login-gate{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 20% 20%,rgba(45,212,191,.18),transparent 28%),radial-gradient(circle at 80% 78%,rgba(251,191,36,.12),transparent 26%),rgba(4,10,22,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .login-gate.hidden{display:none}
+  .login-panel{width:min(100%,410px);border:1px solid rgba(45,212,191,.55);border-radius:16px;background:linear-gradient(180deg,rgba(17,28,48,.98),rgba(11,18,32,.99));box-shadow:0 24px 70px rgba(0,0,0,.5);padding:28px}
+  .login-panel h2{font-size:24px;margin-bottom:8px;color:var(--ink)}
+  .login-panel p{font-size:13px;color:var(--sub);margin-bottom:18px}
+  .login-form{display:grid;gap:12px}
+  .login-form input[type="text"],.login-form input[type="password"]{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:10px;background:#0b1220;color:var(--ink);font-size:15px}
+  .login-form button{padding:12px 14px;border:none;border-radius:10px;background:var(--teal-d);color:#fff;font-size:15px;font-weight:800;cursor:pointer}
+  .login-form button:hover{background:var(--teal);color:#08211f}
+  .remember-me{display:flex;align-items:center;gap:8px;color:var(--sub);font-size:13px}
+  .login-status{min-height:19px;margin-top:12px;font-size:13px;color:var(--sub)}
+  .login-status.error{color:#f87171}
+  .logout-btn{position:fixed;right:14px;bottom:14px;z-index:45;border:1px solid var(--line);border-radius:999px;background:rgba(17,28,48,.92);color:var(--sub);padding:7px 11px;font-size:12px;cursor:pointer}
+  .logout-btn:hover{color:var(--teal);border-color:var(--teal)}
 </style>
 </head>
-<body>
+<body class="auth-locked">
+<div id="loginGate" class="login-gate" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="login-panel">
+    <h2 id="loginTitle">ETF Info Login</h2>
+    <p>Please sign in before opening this ETF dashboard.</p>
+    <form id="loginForm" class="login-form">
+      <input id="loginUsername" type="text" autocomplete="username" placeholder="Username">
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password">
+      <label class="remember-me"><input id="rememberLogin" type="checkbox"> Remember this browser</label>
+      <button type="submit">Login</button>
+    </form>
+    <div id="loginStatus" class="login-status">Use the same account as 4ETF-buy-point.</div>
+  </div>
+</div>
 <header>
   <div class="wrap">
     <div class="brand"><h1>籌碼小宇｜台股 ETF 持股追蹤</h1></div>
@@ -2252,6 +2280,41 @@ function switchTab(k){
   if(k==="active")renderActive();if(k==="inst")renderInst();if(k==="dts")renderDts();if(k==="rank")renderRank();if(k==="perf")renderPerfMode();if(k==="focus")renderFocus();if(k==="retire")renderRetire();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>switchTab(t.dataset.tab));
+
+/* ===== lightweight front-end login gate ===== */
+(function(){
+  const AUTH_CONFIG={usernames:["frica","jimmy","frank"],password:"stock2026"};
+  const AUTH_STORAGE_KEY="etf-info-auth";
+  const gate=document.getElementById("loginGate");
+  const form=document.getElementById("loginForm");
+  const username=document.getElementById("loginUsername");
+  const password=document.getElementById("loginPassword");
+  const remember=document.getElementById("rememberLogin");
+  const status=document.getElementById("loginStatus");
+  const hasAuth=()=>window.localStorage.getItem(AUTH_STORAGE_KEY)==="1"||window.sessionStorage.getItem(AUTH_STORAGE_KEY)==="1";
+  const showStatus=(message,type="")=>{if(status){status.textContent=message;status.className=`login-status${type?` ${type}`:""}`;}};
+  const unlock=()=>{
+    document.body.classList.remove("auth-locked");
+    if(gate)gate.classList.add("hidden");
+    if(!document.getElementById("logoutButton")){
+      const btn=document.createElement("button");
+      btn.id="logoutButton";btn.className="logout-btn";btn.type="button";btn.textContent="Logout";
+      btn.onclick=()=>{window.localStorage.removeItem(AUTH_STORAGE_KEY);window.sessionStorage.removeItem(AUTH_STORAGE_KEY);window.location.reload();};
+      document.body.appendChild(btn);
+    }
+  };
+  if(hasAuth()){unlock();return;}
+  if(username)username.focus();
+  if(form)form.addEventListener("submit",ev=>{
+    ev.preventDefault();
+    const ok=AUTH_CONFIG.usernames.includes((username.value||"").trim())&&password.value===AUTH_CONFIG.password;
+    if(!ok){showStatus("Invalid username or password.","error");password.value="";password.focus();return;}
+    const storage=remember&&remember.checked?window.localStorage:window.sessionStorage;
+    storage.setItem(AUTH_STORAGE_KEY,"1");
+    showStatus("Login successful.");
+    unlock();
+  });
+})();
 
 /* init */
 renderGrid();fillCmp();fillCmpSuggest();fillRetDL();renderCmpBar();
